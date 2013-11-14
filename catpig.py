@@ -54,10 +54,10 @@ if args.printer:
 
 else:
     for filename in printer_lists:
-        print filename.upper()
+        status_list = []
         for printer_name in printers_by_file[filename]:
             if printer_name not in all_printers.keys():
-                print "XX {}\tNOT FOUND".format(printer_name)
+                status_list.append("XX {}\tNOT FOUND".format(printer_name))
                 continue
             printer = all_printers[printer_name]
             if printer['printer-state-reasons'][0] != "none":
@@ -73,5 +73,13 @@ else:
                 info = ", ".join(printer['printer-state-reasons'])
             else:
                 info = printer['printer-location']
-            print "{}{}\t{}".format(prefix, printer_name, info)
-        print
+            status_list.append("{}{}\t{}".format(prefix, printer_name, info))
+        heading = " ".join(filename.split(".")).upper()
+        if status_list:
+            print heading
+            print "\n".join(status_list)
+            print
+        elif not args.alerts:
+            print heading
+            print "   (no printers)"
+            print

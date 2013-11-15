@@ -23,8 +23,9 @@ in files whose names end in '.printers'.  The IDs will be grouped by file
 in the summary view.
 """)
 parser.add_argument("printer", metavar="PRINTER", choices=check_printers, nargs="?", help="ID of printer (if absent, catpig will print a summary)")
-parser.add_argument("-t", "--test", action='store_true', help="send a test page to the selected printer")
 parser.add_argument("-a", "--alerts", action='store_true', help="summarize only the printers which have alerts")
+parser.add_argument("-j", "--jobs", action='store_true', help="list any incomplete print jobs")
+parser.add_argument("-t", "--test", action='store_true', help="send a test page to the selected printer, after confirming")
 args = parser.parse_args()
 
 
@@ -51,6 +52,23 @@ if args.printer:
             print "Confirmed, sending test page."
         else:
             print "Aborted."
+
+elif args.jobs:
+    job_attrs = [
+        'printer-uri',
+        'job-state-reasons',
+        'time-at-completed',
+        'time-at-created',
+        'time-at-processing'
+    ]
+
+    jobs = conn.getJobs()
+    if jobs:
+        for job_id in jobs:
+            ja = conn.getJobAttributes(job_id, job_attrs)
+            printer = ja['printer-uri'].rsplit("/", 1)[1]
+            status = ja['job-state-reasons']
+            print "{} on {}\t{}".format(job_id, printer, status)
 
 else:
     for filename in printer_lists:

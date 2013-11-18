@@ -17,7 +17,7 @@ for list_file in printer_lists:
         printers_by_file[list_file] = [p.strip() for p in fp.readlines()]
         check_printers.extend(printers_by_file[list_file])
 
-jobs = conn.getJobs(which_jobs='all', limit=10)
+jobs = conn.getJobs()
 job_list = {}
 jobs_by_printer = {}
 for printer in all_printers:
@@ -30,15 +30,21 @@ if jobs:
         job_list[job_id]['printer'] = printer
         jobs_by_printer[printer].append(job_id)
 
-def print_job(job_id):
-    ja = job_list[job_id]
-    printer = ja['printer']
-    reason = str(ja['job-state-reasons']) # so maketrans doesn't choke on unicode
-    status = reason[4:].translate(string.maketrans("-", " ")).title()
-    message = ja['job-printer-state-message']
-    if message:
-        message = "\t{}".format(message)
-    print "{}\t{}\t{}{}".format(job_id, printer, status, message)
+def pretty_string(message):
+    # casting to string to ensure non-unicode
+    return str(message).translate(string.maketrans("-", " ")).title()
+
+def print_job(job_id, show_printer=True):
+    job_attrs = job_list[job_id]
+    status = pretty_string(job_attrs['job-state-reasons'][4:])
+    user = job_attrs['job-originating-user-name'].ljust(9)
+    name = job_attrs['job-name'].ljust(9)
+    message = job_attrs['job-printer-state-message']
+    if show_printer:
+        printer = job_attrs['printer']
+        print "\t".join([str(job_id), printer, user, name, status, message])
+    else:
+        print "\t".join([str(job_id), user, name, status, message])
 
 
 parser = argparse.ArgumentParser(description="""
@@ -65,14 +71,14 @@ if args.printer:
     if printer['printer-state-message']:
         print "Status:\t\t{}".format(printer['printer-state-message'])
     if printer['printer-state-reasons'][0] != "none":
-        print "Messages:\t{}".format(printer['printer-state-reasons'].pop())
+        print "Messages:\t{}".format(pretty_string(printer['printer-state-reasons'].pop()))
         for reason in printer['printer-state-reasons']:
-            print "\t\t{}".format(reason)
+            print "\t\t{}".format(pretty_string(reason))
     if jobs_by_printer[args.printer]:
         print "Jobs:"
         for job_id in jobs_by_printer[args.printer]:
             print "\t",
-            print_job(job_id)
+            print_job(job_id, show_printer=False)
     if args.test:
         confirmations = ['y', 'yes']
         print
@@ -101,18 +107,25 @@ else:
                 status_list.append("XX {}\tNOT FOUND".format(printer_name))
                 continue
             printer = all_printers[printer_name]
+
             if printer['printer-state-reasons'][0] != "none":
                 has_messages = True
-                prefix = "!! "
+                alert = "!"
             else:
                 has_messages = False
-                prefix = "   "
+                alert = " "
+
             if args.alerts:
                 if not has_messages:
                     continue
                 prefix = ""
                 info = ", ".join(printer['printer-state-reasons'])
             else:
+                if len(jobs_by_printer[printer_name]):
+                    queue = "j"
+                else:
+                    queue = " "
+                prefix = queue + alert + " "
                 info = printer['printer-location']
             status_list.append("{}{}\t{}".format(prefix, printer_name, info))
         heading = " ".join(filename.split(".")).upper()

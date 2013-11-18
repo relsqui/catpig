@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import cups, sys, argparse, tempfile
+import cups, sys, argparse, tempfile, string
 from pprint import pprint
 from glob import glob
 from urllib2 import urlopen
@@ -16,6 +16,30 @@ for list_file in printer_lists:
     with open(list_file) as fp:
         printers_by_file[list_file] = [p.strip() for p in fp.readlines()]
         check_printers.extend(printers_by_file[list_file])
+
+jobs = conn.getJobs(which_jobs='all', limit=10)
+job_list = {}
+jobs_by_printer = {}
+for printer in all_printers:
+    jobs_by_printer[printer] = []
+
+if jobs:
+    for job_id in jobs:
+        job_list[job_id] = conn.getJobAttributes(job_id)
+        printer = job_list[job_id]['printer-uri'].rsplit('/', 1)[1]
+        job_list[job_id]['printer'] = printer
+        jobs_by_printer[printer].append(job_id)
+
+def print_job(job_id):
+    ja = job_list[job_id]
+    printer = ja['printer']
+    reason = str(ja['job-state-reasons']) # so maketrans doesn't choke on unicode
+    status = reason[4:].translate(string.maketrans("-", " ")).title()
+    message = ja['job-printer-state-message']
+    if message:
+        message = "\t{}".format(message)
+    print "{}\t{}\t{}{}".format(job_id, printer, status, message)
+
 
 parser = argparse.ArgumentParser(description="""
 CAT Printer Information Generator. Get information on available printers
@@ -34,7 +58,7 @@ if args.printer:
     try:
         printer = all_printers[args.printer]
     except KeyError:
-        print "Sorry, can't reach {}. Run catpig with no arguments to get a printer list.".format(args.printer)
+        print "Sorry, I don't know of a printer called {}. Run catpig with no arguments to get a list of printers.".format(args.printer)
         sys.exit(1)
     print "Location:\t{}".format(printer['printer-location'])
     print "Model:\t\t{}".format(printer['printer-make-and-model'])
@@ -44,6 +68,11 @@ if args.printer:
         print "Messages:\t{}".format(printer['printer-state-reasons'].pop())
         for reason in printer['printer-state-reasons']:
             print "\t\t{}".format(reason)
+    if jobs_by_printer[args.printer]:
+        print "Jobs:"
+        for job_id in jobs_by_printer[args.printer]:
+            print "\t",
+            print_job(job_id)
     if args.test:
         confirmations = ['y', 'yes']
         print
@@ -61,24 +90,8 @@ if args.printer:
             print "Aborted."
 
 elif args.jobs:
-    job_attrs = [
-        'printer-uri',
-        'job-state-reasons',
-        'time-at-completed',
-        'time-at-created',
-        'time-at-processing'
-    ]
-
-    jobs = conn.getJobs()
-    if jobs:
-        for job_id in jobs:
-            ja = conn.getJobAttributes(job_id)
-            printer = ja['printer-uri'].rsplit("/", 1)[1]
-            status = ja['job-state-reasons']
-            message = ja['job-printer-state-message'].rsplit("/", 1)[1]
-            if message:
-                message = " ({})".format(message)
-            print "{} on {}\t{}{}".format(job_id, printer, status, message)
+    for job_id in job_list:
+        print_job(job_id)
 
 else:
     for filename in printer_lists:

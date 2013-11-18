@@ -1,8 +1,9 @@
 #!/usr/bin/python
 
-import cups, sys, argparse
+import cups, sys, argparse, tempfile
 from pprint import pprint
 from glob import glob
+from urllib2 import urlopen
 
 
 conn = cups.Connection()
@@ -48,8 +49,14 @@ if args.printer:
         print
         confirm = raw_input("Sending test page. Confirm? ")
         if confirm in confirmations:
-            conn.printTestPage(args.printer)
-            print "Confirmed, sending test page."
+            print "Confirmed. Fetching test page data ..."
+            animal = urlopen('http://www.lorempixel.com/800/600/animals').read()
+            with tempfile.NamedTemporaryFile() as fp:
+                tempfilename = fp.name
+                fp.write(animal)
+                print "Fetched. Printing ..."
+                conn.printFile(args.printer, tempfilename, "CATPIG Test", {})
+            print "Done."
         else:
             print "Aborted."
 
@@ -65,10 +72,13 @@ elif args.jobs:
     jobs = conn.getJobs()
     if jobs:
         for job_id in jobs:
-            ja = conn.getJobAttributes(job_id, job_attrs)
+            ja = conn.getJobAttributes(job_id)
             printer = ja['printer-uri'].rsplit("/", 1)[1]
             status = ja['job-state-reasons']
-            print "{} on {}\t{}".format(job_id, printer, status)
+            message = ja['job-printer-state-message'].rsplit("/", 1)[1]
+            if message:
+                message = " ({})".format(message)
+            print "{} on {}\t{}{}".format(job_id, printer, status, message)
 
 else:
     for filename in printer_lists:

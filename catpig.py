@@ -32,8 +32,9 @@ in the summary view.
 """)
 parser.add_argument("printer", metavar="PRINTER", nargs="?", help="substring of printer name(s) to get details on (if absent, catpig will print a summary)")
 parser.add_argument("-a", "--alerts", action='store_true', help="summarize only the printers which have alerts")
+parser.add_argument("-d", "--details", action='store_true', help="show details for all matching printers")
 parser.add_argument("-j", "--jobs", action='store_true', help="list any incomplete print jobs")
-parser.add_argument("-t", "--test", action='store_true', help="send a test page to the selected printer, after confirming")
+parser.add_argument("-t", "--test", action='store_true', help="send a test to printers in detail view, after confirming")
 args = parser.parse_args()
 
 
@@ -71,37 +72,37 @@ if jobs:
         jobs_by_printer[printer].append(job_id)
 
 
-if len(matched_printers) == 1:
-    printer_name = matched_printers[0]
-    printer = all_printers[printer_name]
-    print "Location:\t{}".format(printer['printer-location'])
-    print "Model:\t\t{}".format(printer['printer-make-and-model'])
-    if printer['printer-state-message']:
-        print "Status:\t\t{}".format(printer['printer-state-message'])
-    if printer['printer-state-reasons'][0] != "none":
-        print "Messages:\t{}".format(pretty_string(printer['printer-state-reasons'].pop()))
-        for reason in printer['printer-state-reasons']:
-            print "\t\t{}".format(pretty_string(reason))
-    if jobs_by_printer[printer_name]:
-        print "Jobs:"
-        for job_id in jobs_by_printer[printer_name]:
-            print "\t",
-            display_job(job_id, show_printer=False)
-    if args.test:
-        confirmations = ['y', 'yes']
+if len(matched_printers) == 1 or (matched_printers and args.details):
+    for printer_name in matched_printers:
+        printer = all_printers[printer_name]
+        print "Location:\t{}".format(printer['printer-location'])
+        print "Model:\t\t{}".format(printer['printer-make-and-model'])
+        if printer['printer-state-message']:
+            print "Status:\t\t{}".format(printer['printer-state-message'])
+        if printer['printer-state-reasons'][0] != "none":
+            print "Messages:\t{}".format(pretty_string(printer['printer-state-reasons'].pop()))
+            for reason in printer['printer-state-reasons']:
+                print "\t\t{}".format(pretty_string(reason))
+        if jobs_by_printer[printer_name]:
+            print "Jobs:"
+            for job_id in jobs_by_printer[printer_name]:
+                print "\t",
+                display_job(job_id, show_printer=False)
+        if args.test:
+            confirmations = ['y', 'yes']
+            confirm = raw_input("Sending test page to {}. Confirm? ".format(printer_name))
+            if confirm in confirmations:
+                print "Confirmed. Fetching test page data ..."
+                animal = urlopen('http://www.lorempixel.com/800/600/animals').read()
+                with tempfile.NamedTemporaryFile() as fp:
+                    tempfilename = fp.name
+                    fp.write(animal)
+                    print "Fetched. Printing ..."
+                    conn.printFile(printer_name, tempfilename, "CATPIG Test", {})
+                print "Done."
+            else:
+                print "Aborted."
         print
-        confirm = raw_input("Sending test page. Confirm? ")
-        if confirm in confirmations:
-            print "Confirmed. Fetching test page data ..."
-            animal = urlopen('http://www.lorempixel.com/800/600/animals').read()
-            with tempfile.NamedTemporaryFile() as fp:
-                tempfilename = fp.name
-                fp.write(animal)
-                print "Fetched. Printing ..."
-                conn.printFile(printer_name, tempfilename, "CATPIG Test", {})
-            print "Done."
-        else:
-            print "Aborted."
 
 elif not args.jobs:
     for filename in printer_lists:

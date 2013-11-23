@@ -1,13 +1,11 @@
 #!/usr/bin/python
 
 import cups, sys, argparse, tempfile, string
-from pprint import pprint
 from glob import glob
 from urllib2 import urlopen
 
 
 def pretty_string(message):
-    # casting to string to ensure non-unicode
     return str(message).translate(string.maketrans("-", " ")).title()
 
 def display_job(job_id, show_printer=True):
@@ -26,8 +24,8 @@ def display_job(job_id, show_printer=True):
 
 parser = argparse.ArgumentParser(description="""
 CAT Printer Information Generator. Get information on available printers
-and send test prints. To add printers to catpig's checklist, list their IDs
-in files whose names end in '.printers'.  The IDs will be grouped by file
+and send test prints. To add printers to catpig's checklist, list their names
+in files whose names end in '.printers'.  The names will be grouped by file
 in the summary view.
 """)
 parser.add_argument("printer", metavar="PRINTER", nargs="?", help="substring of printer name(s) to get details on (if absent, catpig will print a summary)")

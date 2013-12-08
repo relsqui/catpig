@@ -95,8 +95,11 @@ for printer in all_printers:
 
 if jobs:
     for job_id in jobs:
+        job = conn.getJobAttributes(job_id)
+        printer = job['printer-uri'].rsplit('/', 1)[1]
+        if args.printer and printer not in matched_printers:
+            continue
         job_list[job_id] = conn.getJobAttributes(job_id)
-        printer = job_list[job_id]['printer-uri'].rsplit('/', 1)[1]
         job_list[job_id]['printer'] = printer
         jobs_by_printer[printer].append(job_id)
 

@@ -18,7 +18,7 @@ def pretty_string(message):
 def display_job(job_id, show_printer=True):
     job_attrs = job_list[job_id]
     status = pretty_string(job_attrs['job-state-reasons'][4:])
-    if job_attrs['job-printer-state-message']:
+    if 'job-printer-state-message' in job_attrs:
         status = "{} ({})".format(status, job_attrs['job-printer-state-message'])
     user = job_attrs['job-originating-user-name'].ljust(9)
     name = job_attrs['job-name'].ljust(9)
@@ -86,7 +86,7 @@ if args.printer:
 if args.alerts:
     if not matched_printers:
         matched_printers = check_printers
-    matched_printers = [p for p in matched_printers if all_printers[p]['printer-state-reasons'][0] != "none"]
+    matched_printers = [p for p in matched_printers if p in all_printers and all_printers[p]['printer-state-reasons'][0] != "none"]
 
 job_list = {}
 jobs_by_printer = {}
@@ -109,7 +109,7 @@ if args.details:
         print "Printer Name:\t{}".format(printer_name)
         print "Location:\t{}".format(printer['printer-location'])
         print "Model:\t\t{}".format(printer['printer-make-and-model'])
-        if printer['printer-state-message']:
+        if 'printer-state-message' in printer:
             print "Status:\t\t{}".format(printer['printer-state-message'])
         if printer['printer-state-reasons'][0] != "none":
             print "Messages:\t{}".format(pretty_string(printer['printer-state-reasons'].pop()))

@@ -22,7 +22,8 @@ def display_job(job_id):
     job_attrs = job_list[job_id]
     status = pretty_string(job_attrs['job-state-reasons'][4:])
     if 'job-printer-state-message' in job_attrs:
-        status = " -- {} ({})".format(status, job_attrs['job-printer-state-message'])
+        message = job_attrs['job-printer-state-message']
+        status = " -- {} ({})".format(status, message)
     user = job_attrs['job-originating-user-name']
     name = job_attrs['job-name']
     print "{}  {} ({}){}".format(str(job_id), name, user, status)
@@ -42,7 +43,8 @@ def print_details(printer_name):
     if 'printer-state-message' in printer and printer['printer-state-message']:
         print "Status:\t\t{}".format(printer['printer-state-message'])
     if printer['printer-state-reasons'][0] != "none":
-        print "Messages:\t{}".format(pretty_string(printer['printer-state-reasons'].pop()))
+        first_message = printer['printer-state-reasons'].pop()
+        print "Messages:\t{}".format(pretty_string(first_message))
         for reason in printer['printer-state-reasons']:
             print "\t\t{}".format(pretty_string(reason))
 
@@ -74,7 +76,8 @@ def print_summary(printer_name):
     prefix = queue + alert
 
     if args.alerts:
-        info = ", ".join([pretty_string(r) for r in printer['printer-state-reasons']])
+        alerts = [pretty_string(r) for r in printer['printer-state-reasons']]
+        info = ", ".join(alerts)
     else:
         info = printer['printer-location']
 
@@ -89,7 +92,8 @@ def print_summary(printer_name):
 def test_printer(printer_name):
     "Send a test page to the printer, after confirming."
     confirmations = ['y', 'yes']
-    confirm = raw_input("Sending test page to {}. Confirm? ".format(printer_name))
+    confirm_query = "Sending test page to {}. Confirm? "
+    confirm = raw_input(confirm_query.format(printer_name))
     if confirm in confirmations:
         print "Fetching test page data ..."
         animal = urlopen('http://www.lorempixel.com/800/600/animals').read()
@@ -108,11 +112,17 @@ CAT Printer Information Generator. Get status of printers and jobs and send
 test prints. To add printers to catpig's checklist, list their names in files
 whose names end in '.printers'.
 """)
-parser.add_argument("printer", metavar="PRINTER", nargs="?", help="substring of printer name(s) to get details on (if absent, catpig will print a summary)")
-parser.add_argument("-a", "--alerts", action='store_true', help="show only the matching printers which have alerts")
-parser.add_argument("-d", "--details", action='store_true', help="show details for all matching printers")
-parser.add_argument("-j", "--jobs", action='store_true', help="list incomplete print jobs for matching printers")
-parser.add_argument("-t", "--test", action='store_true', help="send a test to the selected printers, after confirming")
+parser.add_argument("printer", metavar="PRINTER", nargs="?",
+    help="substring of printer name(s) to get details on (if absent, catpig "
+         "will print a summary)")
+parser.add_argument("-a", "--alerts", action='store_true',
+    help="show only the matching printers which have alerts")
+parser.add_argument("-d", "--details", action='store_true',
+    help="show details for all matching printers")
+parser.add_argument("-j", "--jobs", action='store_true',
+    help="list incomplete print jobs for matching printers")
+parser.add_argument("-t", "--test", action='store_true',
+    help="send a test to the selected printers, after confirming")
 args = parser.parse_args()
 
 
@@ -136,7 +146,8 @@ if args.printer:
     test_name = args.printer.lower()
     matched_printers = [n for n in check_printers if test_name in n.lower()]
     if not matched_printers:
-        print "No printers found matching {}. Run catpig with no arguments to get a list of printers.".format(args.printer)
+        print("No printers found matching {}. Run catpig with no arguments "
+              "to get a list of printers.".format(args.printer))
         sys.exit(1)
 else:
     matched_printers = check_printers
@@ -147,7 +158,7 @@ jobs_by_printer = {}
 for printer in all_printers:
     jobs_by_printer[printer] = []
 
-# Get job information and sort by printer.
+# Get job information and sort it by printer.
 if jobs:
     for job_id in jobs:
         job = conn.getJobAttributes(job_id)
@@ -159,13 +170,15 @@ if jobs:
         jobs_by_printer[printer].append(job_id)
 
 # Filter for printers with alerts or jobs, if requested.
-if args.jobs and args.alerts:
-    matched_printers = [p for p in matched_printers if (p in jobs_by_printer and jobs_by_printer[p]) or (p in all_printers and all_printers[p]['printer-state-reasons'][0] != "none")]
-elif args.jobs:
-    matched_printers = [p for p in matched_printers if p in jobs_by_printer and jobs_by_printer[p]]
-elif args.alerts:
-    matched_printers = [p for p in matched_printers if p in all_printers and all_printers[p]['printer-state-reasons'][0] != "none"]
-
+if args.jobs or args.alerts:
+    filtered = []
+    for p in matched_printers:
+        if args.jobs and p in jobs_by_printer and jobs_by_printer[p]:
+            filtered.append(p)
+        elif (args.alerts and p in all_printers
+              and all_printers[p]['printer-state-reasons'][0] != "none"):
+            filtered.append(p)
+    matched_printers = filtered
 
 # Display requested information for matching printers.
 for printer_name in matched_printers:

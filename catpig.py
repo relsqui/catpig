@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import cups, argparse, tempfile, os
+import cups, argparse, tempfile, os, sys
 from glob import glob
 from urllib2 import urlopen
 from string import maketrans
@@ -140,9 +140,13 @@ else:
     matched_printers = []
     basedir = os.path.join(os.path.expanduser("~"), ".catpig/")
     printer_lists = glob(os.path.join(basedir, "*.printers"))
-    for list_file in printer_lists:
-        with open(list_file) as fp:
-            matched_printers.extend([p.strip() for p in fp.readlines()])
+    if printer_lists:
+        for list_file in printer_lists:
+            with open(list_file) as fp:
+                matched_printers.extend([p.strip() for p in fp.readlines()])
+    else:
+        sys.stderr.write("<!> No printer list found, using list from cups.\n\n")
+        matched_printers = all_printers
 
 # Filter by printer name string argument, if provided.
 if args.printer:
@@ -159,12 +163,8 @@ if args.printer:
         quoted_patterns = ["'{}'".format(p) for p in args.printer]
         pattern_string = " or ".join(quoted_patterns)
         print("No printers found matching {}.".format(pattern_string))
-        if not args.cups:
-            if printer_lists:
-                print "Checked {}".format(", ".join(printer_lists))
-            else:
-                print ("No printer files were found. Try -c to search for "
-                       "{} in cups.".format(pattern_string))
+        if not args.cups and printer_lists:
+            print "Checked {}".format(", ".join(printer_lists))
 
 # Initialize job lists.
 job_list = {}

@@ -113,9 +113,8 @@ CAT Printer Information Generator. Get status of printers and jobs and send
 test prints. Unless -c is specified, will look for printers whose names are
 listed in ~/.catpig/*.printers and report only on those.
 """)
-parser.add_argument("printer", metavar="PRINTER", nargs="?",
-    help="substring of printer name(s) to get details on (if absent, catpig "
-         "will print a summary)")
+parser.add_argument("printer", metavar="PRINTER", nargs="*",
+    help="substrings of printer names to look for")
 parser.add_argument("-a", "--alerts", action="store_true",
     help="show only the matching printers which have alerts")
 parser.add_argument("-c", "--cups", action="store_true",
@@ -147,11 +146,25 @@ else:
 
 # Filter by printer name string argument, if provided.
 if args.printer:
-    test_name = args.printer.lower()
-    matched_printers = [n for n in matched_printers if test_name in n.lower()]
+    filtered = []
+    printer_patterns = map(lambda s: s.lower(), args.printer)
+    for m in matched_printers:
+        m = m.lower()
+        for p in printer_patterns:
+            if p in m:
+                filtered.append(m)
+                break
+    matched_printers = filtered
     if not matched_printers:
-        print("No printers found matching {}. Run catpig with no arguments "
-              "to get a list of printers.".format(args.printer))
+        quoted_patterns = ["'{}'".format(p) for p in args.printer]
+        pattern_string = " or ".join(quoted_patterns)
+        print("No printers found matching {}.".format(pattern_string))
+        if not args.cups:
+            if printer_lists:
+                print "Checked {}".format(", ".join(printer_lists))
+            else:
+                print ("No printer files were found. Try -c to search for "
+                       "{} in cups.".format(pattern_string))
 
 # Initialize job lists.
 job_list = {}
@@ -164,7 +177,7 @@ if jobs:
     for job_id in jobs:
         job = conn.getJobAttributes(job_id)
         printer = job["printer-uri"].rsplit("/", 1)[1]
-        if args.printer and printer not in matched_printers:
+        if printer not in matched_printers:
             continue
         job_list[job_id] = conn.getJobAttributes(job_id)
         job_list[job_id]["printer"] = printer

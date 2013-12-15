@@ -112,8 +112,9 @@ def test_printer(printer_name):
 
 # Define command line options and help output.
 parser = argparse.ArgumentParser(description="""
-CAT Printer Information Generator. Get status of printers and jobs and send
-test prints.
+CAT Printer Information Generator. Get status of printers whose names match
+all the substrings provided (if any are), either from lists given in
+~/.catpig/*.printers or directly from cups.
 """)
 parser.add_argument("printer", metavar="PRINTER", nargs="*",
     help="substrings of printer names to look for")
@@ -157,13 +158,14 @@ if args.printer:
     for m in matched_printers:
         m = m.lower()
         for p in printer_patterns:
-            if p in m:
-                filtered.append(m)
+            if p not in m:
                 break
+        else:
+            filtered.append(m)
     matched_printers = filtered
     if not matched_printers:
         quoted_patterns = ["'{}'".format(p) for p in args.printer]
-        pattern_string = " or ".join(quoted_patterns)
+        pattern_string = " and ".join(quoted_patterns)
         print_error("No printers found matching {}.".format(pattern_string))
         if not args.cups and printer_lists:
             print_error("Checked {}".format(", ".join(printer_lists)))

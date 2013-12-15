@@ -6,6 +6,9 @@ from urllib2 import urlopen
 from string import maketrans
 
 
+def print_error(message):
+    sys.stderr.write("{}\n".format(message))
+
 def pretty_string(message):
     "Make printer status messages a little tidier-looking."
     message = str(message)
@@ -96,15 +99,15 @@ def test_printer(printer_name):
     confirm_query = "Sending test page to {}. Confirm? "
     confirm = raw_input(confirm_query.format(printer_name))
     if confirm in confirmations:
-        print "Fetching test page data ..."
+        print_error("Fetching test page data ...")
         animal = urlopen("http://www.lorempixel.com/800/600/animals").read()
         with tempfile.NamedTemporaryFile() as fp:
             fp.write(animal)
-            print "Fetched. Printing ..."
+            print_error("Fetched. Printing ...")
             conn.printFile(printer_name, fp.name, "CATPIG Test", {})
-        print "Done."
+        print_error("Done.")
     else:
-        print "Aborted."
+        print_error("Aborted.")
 
 
 # Define command line options and help output.
@@ -144,7 +147,7 @@ else:
             with open(list_file) as fp:
                 matched_printers.extend([p.strip() for p in fp.readlines()])
     else:
-        sys.stderr.write("<!> No printer list found, using list from cups.\n\n")
+        print_error("No printer list found, using list from cups.\n")
         matched_printers = all_printers
 
 # Filter by printer name string arguments, if provided.
@@ -161,9 +164,9 @@ if args.printer:
     if not matched_printers:
         quoted_patterns = ["'{}'".format(p) for p in args.printer]
         pattern_string = " or ".join(quoted_patterns)
-        print("No printers found matching {}.".format(pattern_string))
+        print_error("No printers found matching {}.".format(pattern_string))
         if not args.cups and printer_lists:
-            print "Checked {}".format(", ".join(printer_lists))
+            print_error("Checked {}".format(", ".join(printer_lists)))
 
 # Initialize job lists.
 job_list = {}

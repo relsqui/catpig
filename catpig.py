@@ -110,21 +110,20 @@ def test_printer(printer_name):
 # Define command line options and help output.
 parser = argparse.ArgumentParser(description="""
 CAT Printer Information Generator. Get status of printers and jobs and send
-test prints. Unless -c is specified, will look for printers whose names are
-listed in ~/.catpig/*.printers and report only on those.
+test prints.
 """)
 parser.add_argument("printer", metavar="PRINTER", nargs="*",
     help="substrings of printer names to look for")
 parser.add_argument("-a", "--alerts", action="store_true",
-    help="show only the matching printers which have alerts")
-parser.add_argument("-c", "--cups", action="store_true",
-    help="use printer list from cups instead of ~/.catpig/*.printers")
-parser.add_argument("-d", "--details", action="store_true",
-    help="show details for all matching printers")
+    help="show printers which have alerts, and list them")
 parser.add_argument("-j", "--jobs", action="store_true",
-    help="list incomplete print jobs for matching printers")
+    help="show printers which have unfinished jobs, and list them")
+parser.add_argument("-d", "--details", action="store_true",
+    help="show detailed information for the selected printers")
 parser.add_argument("-t", "--test", action="store_true",
     help="send a test to the selected printers, after confirming")
+parser.add_argument("-c", "--cups", action="store_true",
+    help="use printer list from cups instead of ~/.catpig/*.printers")
 args = parser.parse_args()
 
 
@@ -148,7 +147,7 @@ else:
         sys.stderr.write("<!> No printer list found, using list from cups.\n\n")
         matched_printers = all_printers
 
-# Filter by printer name string argument, if provided.
+# Filter by printer name string arguments, if provided.
 if args.printer:
     filtered = []
     printer_patterns = map(lambda s: s.lower(), args.printer)

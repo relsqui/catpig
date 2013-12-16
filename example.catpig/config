@@ -1,0 +1,9 @@
+[Job Email Headers]
+From = {me}@support.example.com
+To = {user}@ouroffice.example.com
+CC = tickets@support.example.com
+Subject = Your print job(s) on {printer} have been removed.
+
+[Job Email Body]
+body = job_cancel_email
+signature = signature

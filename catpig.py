@@ -12,6 +12,7 @@ basedir = os.path.join(os.path.expanduser("~"), ".catpig/")
 
 
 def print_error(message):
+    "Print message to stderr with a newline."
     sys.stderr.write("{}\n".format(message))
 
 def pretty_string(message):

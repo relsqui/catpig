@@ -2,15 +2,13 @@ CATpig
 ======
 is the CAT printer information generator. It can be used to create a quick summary on all the printers in a CUPS system, read status alerts, send test messages, and view or cancel incomplete print jobs.
 
-Installation and Files
-======================
+### Installation and Files ###
 The only file actually required to use CATpig is `catpig.py`. All the python modules it uses are built-in, so you can just drop it somewhere in your path and you're good to go. That said, CATpig will look for a directory called `~/.catpig` and can do some useful things if it finds the following in it (especially if you also have sendmail running):
 
  * `*.printers` - If any files matching this glob are present, CATpig will look in them for printer names and ignore all other printers. Useful if you're only managing a small part of a large CUPS system. (You can override this behavior with the `-c` command line switch.)
  * `config` - If present, this should contain headers and a message body filename with which to email users when their jobs are killed. See *Email* for more details.
 
-Quick Reference
-===============
+### Quick Reference ###
 ```
 usage: catpig [-h] [-a] [-j] [-v] [-t] [-k] [-c] [PRINTER [PRINTER ...]]
 
@@ -31,8 +29,7 @@ optional arguments:
   -c, --cups     use printer list from cups instead of ~/.catpig/*.printers
 ```
 
-Basic Usage
-===========
+### Basic Usage ###
 Once your configuration is set up (if desired), you can get a summary view of all your printers by just running `catpig`.
 
 ```
@@ -70,9 +67,13 @@ j! office2clr   Media Jam
    . 6803  important_report.pdf (alice)
 Cancel job #6803? y
 Job removed.
+Send email? n
+Aborted.
    . 6804  complex_spreadsheet.pdf (bob)
 Cancel job #6804? y
 Job removed.
+Send email? n
+Aborted.
 
 [jschmoe@it ~]$ catpig -aj
  ! frontdesk    Toner Empty, Media Low
@@ -81,9 +82,7 @@ Job removed.
 
 It's still jammed, but now there aren't jobs waiting to spew out as soon as you clear it.
 
-Additional Examples
-===================
-
+### Additional Examples ###
 Now you're out picking up toner for the front desk printer, but you've forgotten what the model is. Rather than calling the office and bugging someone to check, just ssh back to your workstation and use CATpig. You can pass a positional parameter to limit your view to the printers you're interested in ...
 
 ```
@@ -122,8 +121,7 @@ Done.
 
 CATpig fetches its full-color test pages from the animals section of lorempixel.com, which provides random filler images specified by size and category. If you leave off the filtering positional parameters, get the full printer list from cups, and automate the confirmations (i.e. `yes | catpig -ct`) you can automatically send random animal photos to every printer in the office. Just saying.
 
-Email
-=====
+### Email ###
 To have CATpig email users when you kill their jobs, you need to have two things in your `~/.catpig`: a configuration file, and a text file that contains the body of the email. Examples of both are included in `example.catpig`. You will also need sendmail running.
 
 Only four of the configuration options are absolutely required for email to work: `To`, `From`, and `Subject` (in the headers section), and `body` (in the body section). Any extra variables in the headers section will be appended to the email headers. The body section can also contain a `signature` variable giving the name of a signature file.

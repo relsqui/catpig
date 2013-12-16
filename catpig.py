@@ -1,9 +1,14 @@
 #!/usr/bin/python
 
-import cups, argparse, tempfile, os, sys
+import cups, argparse, tempfile, os, sys, smtplib, pwd, ConfigParser
 from glob import glob
 from urllib2 import urlopen
 from string import maketrans
+from email.mime.text import MIMEText
+
+
+confirmations = ["y", "yes"]
+basedir = os.path.join(os.path.expanduser("~"), ".catpig/")
 
 
 def print_error(message):
@@ -91,19 +96,99 @@ def print_summary(printer_name):
         for job_id in jobs_by_printer[printer_name]:
             print "   .",
             display_job(job_id)
-            if args.kill:
-                confirmations = ["y", "yes"]
-                confirm = raw_input("Cancel job #{}? ".format(job_id))
-                if confirm in confirmations:
-                    conn.cancelJob(job_id)
-                    print_error("Job removed.")
-                else:
-                    print_error("Aborted.")
+            if not args.kill:
+                continue
 
+            confirm = raw_input("Cancel job #{}? ".format(job_id))
+            if confirm not in confirmations:
+                print_error("Aborted.")
+                continue
+
+            conn.cancelJob(job_id)
+            print_error("Job removed.")
+
+            confirm = raw_input("Send email? ")
+            if confirm not in confirmations:
+                print_error("Aborted.")
+                continue
+
+            job = job_list[job_id]
+            email_vars = {
+                "user": job["job-originating-user-name"],
+                "me": pwd.getpwuid(os.getuid()).pw_name,
+                "name": job["job-name"],
+                "printer": printer_name
+            }
+
+            try:
+                config_file = os.path.join(basedir, "config")
+                with open(config_file) as fp:
+                    config = ConfigParser.ConfigParser()
+                    config.optionxform = str
+                    config.readfp(fp)
+            except IOError:
+                print_error("Couldn't read config file: {}".format(config_file))
+                continue
+
+            try:
+                body_file = os.path.join(basedir,
+                                         config.get("Job Email Body", "body"))
+                with open(os.path.join(basedir, body_file)) as fp:
+                    body = fp.read()
+            except KeyError:
+                print_error("No message body filename found. (It should be in "
+                            "the option 'body' and section 'Job Email Body'.)")
+                continue
+            except IOError:
+                print_error("Couldn't read email body file: "
+                            "{}".format(body_file))
+                continue
+
+            try:
+                sig_file = os.path.join(basedir,
+                                      config.get("Job Email Body", "signature"))
+                with open(sig_file) as fp:
+                    signature = fp.read()
+                body += "\n" + signature
+            except KeyError:
+                print_error("(No signature filename found, continuing anyway.)")
+            except IOError:
+                print_error("Couldn't read signature file: {}".format(sig_file))
+                continue
+
+            body = body.format(**email_vars)
+
+            headers = {}
+            for header, value in config.items("Job Email Headers"):
+                headers[header] = value.format(**email_vars)
+
+            try:
+                for req in ["To", "From", "Subject"]:
+                    if req not in headers:
+                        print_error("Missing required header: {}".format(req))
+                        raise KeyError
+            except KeyError:
+                continue
+
+            msg = MIMEText(body)
+            for header, value in headers.items():
+                msg[header] = value
+
+            sender = headers["From"]
+            try:
+                receivers = [headers["To"]]
+                receivers.append(headers["CC"])
+                receivers.append(headers["BCC"])
+            except KeyError:
+                pass
+
+            s = smtplib.SMTP('localhost')
+            s.sendmail(sender, receivers, msg.as_string())
+            s.quit()
+            print_error("Sent.")
 
 def test_printer(printer_name):
     "Send a test page to the printer, after confirming."
-    confirmations = ["y", "yes"]
     confirm_query = "Sending test page to {}. Confirm? "
     confirm = raw_input(confirm_query.format(printer_name))
     if confirm in confirmations:
@@ -151,7 +236,6 @@ if args.cups:
 else:
     # Open *.printers files and build printer name lists.
     matched_printers = []
-    basedir = os.path.join(os.path.expanduser("~"), ".catpig/")
     printer_lists = glob(os.path.join(basedir, "*.printers"))
     if printer_lists:
         for list_file in printer_lists:

@@ -3,7 +3,7 @@ CATpig
 is the CAT printer information generator. It can be used to create a quick summary on all the printers in a CUPS system, read status alerts, send test messages, and view or cancel incomplete print jobs.
 
 ### Installation and Files ###
-The only file actually required to use CATpig is `catpig.py`. All the python modules it uses are built-in, so you can just drop it somewhere in your path and you're good to go. That said, CATpig will look for a directory called `~/.catpig` and can do some useful things if it finds the following in it (especially if you also have sendmail running):
+Install requirements using `pip -r requirements.txt`, link CATpig into your path, and you should be good to go. No further configuration is necessary, but CATpig will look for a directory called `~/.catpig` and can do some useful things if it finds the following in it (especially if you also have sendmail running):
 
  * `*.printers` - If any files matching this glob are present, CATpig will look in them for printer names and ignore all other printers. Useful if you're only managing a small part of a large CUPS system. (You can override this behavior with the `-c` command line switch.)
  * `config` - If present, this should contain headers and a message body filename with which to email users when their jobs are killed. See *Email* for more details.

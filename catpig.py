@@ -91,6 +91,14 @@ def print_summary(printer_name):
         for job_id in jobs_by_printer[printer_name]:
             print "   .",
             display_job(job_id)
+            if args.kill:
+                confirmations = ["y", "yes"]
+                confirm = raw_input("Cancel job #{}? ".format(job_id))
+                if confirm in confirmations:
+                    conn.cancelJob(job_id)
+                    print_error("Job removed.")
+                else:
+                    print_error("Aborted.")
 
 
 def test_printer(printer_name):
@@ -125,7 +133,9 @@ parser.add_argument("-j", "--jobs", action="store_true",
 parser.add_argument("-d", "--details", action="store_true",
     help="show detailed information for the selected printers")
 parser.add_argument("-t", "--test", action="store_true",
-    help="send a test to the selected printers, after confirming")
+    help="prompt to send a test to selected printers")
+parser.add_argument("-k", "--kill", action="store_true",
+    help="prompt to kill listed unfinished jobs")
 parser.add_argument("-c", "--cups", action="store_true",
     help="use printer list from cups instead of ~/.catpig/*.printers")
 args = parser.parse_args()

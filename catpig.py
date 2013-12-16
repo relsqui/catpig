@@ -46,7 +46,7 @@ def pretty_string(message):
     return message.translate(maketrans("-", " ")).title()
 
 
-def display_job(job_id):
+def print_job(job_id):
     "Print information about a job."
     job_attrs = job_list[job_id]
     status = pretty_string(job_attrs["job-state-reasons"][4:])
@@ -81,10 +81,10 @@ def print_details(printer_name):
 
     if jobs_by_printer[printer_name]:
         print "Jobs:\t\t",
-        display_job(jobs_by_printer[printer_name][0])
+        print_job(jobs_by_printer[printer_name][0])
         for job_id in jobs_by_printer[printer_name][1:]:
             print "\t\t",
-            display_job(job_id)
+            print_job(job_id)
     print
 
 
@@ -117,7 +117,7 @@ def print_summary(printer_name):
     if args.jobs or args.kill:
         for job_id in jobs_by_printer[printer_name]:
             print "   .",
-            display_job(job_id)
+            print_job(job_id)
 
 
 def kill_job(job_id):

@@ -210,8 +210,7 @@ def kill_job(job_id):
 
 def test_printer(printer_name):
     "Send a test page to the printer, after confirming."
-    confirm_query = "Sending test page to {}. Confirm? "
-    confirm = raw_input(confirm_query.format(printer_name))
+    confirm = raw_input("Send test page to {}? ".format(printer_name))
     if confirm in confirmations:
         print_error("Fetching test page data ...")
         animal = urlopen("http://www.lorempixel.com/800/600/animals").read()

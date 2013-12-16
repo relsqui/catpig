@@ -62,10 +62,10 @@ j! office2clr   Media Jam
    . 6804  complex_spreadsheet.xls (bob)
 ```
 
-So the front desk printer needs toner and paper, and the color printer in the conference room is jammed. You happen to know that Alice and Bob have printed their documents elsewhere already, so you can kill these jobs with the `-jk` switch. (`-k` alone doesn't do anything; you need to list jobs for it to prompt you to cancel them.)
+So the front desk printer needs toner and paper, and the color printer in the conference room is jammed. You happen to know that Alice and Bob have printed their documents elsewhere already, so you can kill these jobs with the `-k` switch.
 
 ```
-[jschmoe@it ~]$ catpig -jk
+[jschmoe@it ~]$ catpig -k
 j! office2clr   Media Jam
    . 6803  important_report.pdf (alice)
 Cancel job #6803? y

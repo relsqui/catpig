@@ -92,7 +92,7 @@ def print_summary(printer_name):
 
     print prefix, printer_name, "\t", info
 
-    if args.jobs:
+    if args.jobs or args.kill:
         for job_id in jobs_by_printer[printer_name]:
             print "   .",
             display_job(job_id)
@@ -220,7 +220,7 @@ parser.add_argument("-d", "--details", action="store_true",
 parser.add_argument("-t", "--test", action="store_true",
     help="prompt to send a test to selected printers")
 parser.add_argument("-k", "--kill", action="store_true",
-    help="prompt to kill listed unfinished jobs")
+    help="prompt to kill listed unfinished jobs; implies -j")
 parser.add_argument("-c", "--cups", action="store_true",
     help="use printer list from cups instead of ~/.catpig/*.printers")
 args = parser.parse_args()
@@ -282,10 +282,11 @@ if jobs:
         jobs_by_printer[printer].append(job_id)
 
 # Filter for printers with alerts or jobs, if requested.
-if args.jobs or args.alerts:
+if args.jobs or args.kill or args.alerts:
     filtered = []
     for p in matched_printers:
-        if args.jobs and p in jobs_by_printer and jobs_by_printer[p]:
+        if ((args.jobs or args.kill)
+            and p in jobs_by_printer and jobs_by_printer[p]):
             filtered.append(p)
         elif (args.alerts and p in all_printers
               and all_printers[p]["printer-state-reasons"][0] != "none"):

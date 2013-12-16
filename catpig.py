@@ -215,7 +215,7 @@ parser.add_argument("-a", "--alerts", action="store_true",
     help="show printers which have alerts, and list them")
 parser.add_argument("-j", "--jobs", action="store_true",
     help="show printers which have unfinished jobs, and list them")
-parser.add_argument("-d", "--details", action="store_true",
+parser.add_argument("-v", "--verbose", action="store_true",
     help="show detailed information for the selected printers")
 parser.add_argument("-t", "--test", action="store_true",
     help="prompt to send a test to selected printers")
@@ -295,7 +295,7 @@ if args.jobs or args.kill or args.alerts:
 
 # Display requested information for matching printers.
 for printer_name in matched_printers:
-    if args.details:
+    if args.verbose:
         print_details(printer_name)
     else:
         print_summary(printer_name)

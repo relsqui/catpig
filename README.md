@@ -12,7 +12,7 @@ The only file actually required to use CATpig is `catpig.py`. All the python mod
 Quick Reference
 ===============
 ```
-usage: catpig [-h] [-a] [-j] [-d] [-t] [-k] [-c] [PRINTER [PRINTER ...]]
+usage: catpig [-h] [-a] [-j] [-v] [-t] [-k] [-c] [PRINTER [PRINTER ...]]
 
 CAT Printer Information Generator. Get status of printers whose names match
 all the substrings provided (if any are), either from lists given in
@@ -25,9 +25,9 @@ optional arguments:
   -h, --help     show this help message and exit
   -a, --alerts   show printers which have alerts, and list them
   -j, --jobs     show printers which have unfinished jobs, and list them
-  -d, --details  show detailed information for the selected printers
+  -v, --verbose  show detailed information for the selected printers
   -t, --test     prompt to send a test to selected printers
-  -k, --kill     prompt to kill listed unfinished jobs
+  -k, --kill     prompt to kill listed unfinished jobs; implies -j
   -c, --cups     use printer list from cups instead of ~/.catpig/*.printers
 ```
 
@@ -91,10 +91,10 @@ Now you're out picking up toner for the front desk printer, but you've forgotten
  ! frontdesk    Toner Empty, Media Low
 ```
 
-... and add the `-d` switch to show more information.
+... and add the `-v` switch to show more information.
 
 ```
-[jschmoe@it ~]$ catpig -d desk
+[jschmoe@it ~]$ catpig -v desk
 Printer Name:   frontdesk
 Location:       Reception Counter
 Model:          HP LaserJet 4250 - CUPS+Gutenprint v5.2.8-pre1

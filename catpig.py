@@ -56,6 +56,8 @@ def display_job(job_id):
     user = job_attrs["job-originating-user-name"]
     name = job_attrs["job-name"]
     print "{}  {} ({}){}".format(str(job_id), name, user, status)
+    if args.kill:
+        kill_job(job_id)
 
 
 def print_details(printer_name):
@@ -116,96 +118,97 @@ def print_summary(printer_name):
         for job_id in jobs_by_printer[printer_name]:
             print "   .",
             display_job(job_id)
-            if not args.kill:
-                continue
 
-            confirm = raw_input("Cancel job #{}? ".format(job_id))
-            if confirm not in confirmations:
-                print_error("Aborted.")
-                continue
 
-            conn.cancelJob(job_id)
-            print_error("Job removed.")
+def kill_job(job_id):
+    confirm = raw_input("Cancel job #{}? ".format(job_id))
+    if confirm not in confirmations:
+        print_error("Aborted.")
+        return
 
-            confirm = raw_input("Send email? ")
-            if confirm not in confirmations:
-                print_error("Aborted.")
-                continue
+    conn.cancelJob(job_id)
+    print_error("Job removed.")
 
-            job = job_list[job_id]
-            email_vars = {
-                "user": job["job-originating-user-name"],
-                "me": pwd.getpwuid(os.getuid()).pw_name,
-                "name": job["job-name"],
-                "printer": printer_name
-            }
+    confirm = raw_input("Send email? ")
+    if confirm not in confirmations:
+        print_error("Aborted.")
+        return
 
-            try:
-                config_file = os.path.join(basedir, "config")
-                with open(config_file) as fp:
-                    config = ConfigParser.ConfigParser()
-                    config.optionxform = str
-                    config.readfp(fp)
-            except IOError:
-                print_error("Couldn't read config file: {}".format(config_file))
-                continue
+    job = job_list[job_id]
+    email_vars = {
+        "user": job["job-originating-user-name"],
+        "me": pwd.getpwuid(os.getuid()).pw_name,
+        "name": job["job-name"],
+        "printer": printer_name
+    }
 
-            try:
-                body_file = os.path.join(basedir,
-                                         config.get("Job Email Body", "body"))
-                with open(os.path.join(basedir, body_file)) as fp:
-                    body = fp.read()
-            except KeyError:
-                print_error("No message body filename found. (It should be in "
-                            "the option 'body' and section 'Job Email Body'.)")
-                continue
-            except IOError:
-                print_error("Couldn't read email body file: "
-                            "{}".format(body_file))
-                continue
+    try:
+        config_file = os.path.join(basedir, "config")
+        with open(config_file) as fp:
+            config = ConfigParser.ConfigParser()
+            config.optionxform = str
+            config.readfp(fp)
+    except IOError:
+        print_error("Couldn't read config file: {}".format(config_file))
+        return
 
-            try:
-                sig_file = os.path.join(basedir,
-                                      config.get("Job Email Body", "signature"))
-                with open(sig_file) as fp:
-                    signature = fp.read()
-                body += "\n" + signature
-            except KeyError:
-                print_error("(No signature filename found, continuing anyway.)")
-            except IOError:
-                print_error("Couldn't read signature file: {}".format(sig_file))
-                continue
+    try:
+        body_file = os.path.join(basedir,
+                                 config.get("Job Email Body", "body"))
+        with open(os.path.join(basedir, body_file)) as fp:
+            body = fp.read()
+    except KeyError:
+        print_error("No message body filename found. (It should be in "
+                    "the option 'body' and section 'Job Email Body'.)")
+        return
+    except IOError:
+        print_error("Couldn't read email body file: "
+                    "{}".format(body_file))
+        return
 
-            body = body.format(**email_vars)
+    try:
+        sig_file = os.path.join(basedir,
+                              config.get("Job Email Body", "signature"))
+        with open(sig_file) as fp:
+            signature = fp.read()
+        body += "\n" + signature
+    except KeyError:
+        print_error("(No signature filename found, continuing anyway.)")
+    except IOError:
+        print_error("Couldn't read signature file: {}".format(sig_file))
+        return
 
-            headers = {}
-            for header, value in config.items("Job Email Headers"):
-                headers[header] = value.format(**email_vars)
+    body = body.format(**email_vars)
 
-            try:
-                for req in ["To", "From", "Subject"]:
-                    if req not in headers:
-                        print_error("Missing required header: {}".format(req))
-                        raise KeyError
-            except KeyError:
-                continue
+    headers = {}
+    for header, value in config.items("Job Email Headers"):
+        headers[header] = value.format(**email_vars)
 
-            msg = MIMEText(body)
-            for header, value in headers.items():
-                msg[header] = value
+    try:
+        for req in ["To", "From", "Subject"]:
+            if req not in headers:
+                print_error("Missing required header: {}".format(req))
+                raise KeyError
+    except KeyError:
+        return
 
-            sender = headers["From"]
-            try:
-                receivers = [headers["To"]]
-                receivers.append(headers["CC"])
-                receivers.append(headers["BCC"])
-            except KeyError:
-                pass
+    msg = MIMEText(body)
+    for header, value in headers.items():
+        msg[header] = value
 
-            s = smtplib.SMTP('localhost')
-            s.sendmail(sender, receivers, msg.as_string())
-            s.quit()
-            print_error("Sent.")
+    sender = headers["From"]
+    try:
+        receivers = [headers["To"]]
+        receivers.append(headers["CC"])
+        receivers.append(headers["BCC"])
+    except KeyError:
+        pass
+
+    s = smtplib.SMTP('localhost')
+    s.sendmail(sender, receivers, msg.as_string())
+    s.quit()
+    print_error("Sent.")
+
 
 def test_printer(printer_name):
     "Send a test page to the printer, after confirming."

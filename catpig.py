@@ -153,8 +153,7 @@ def kill_job(job_id):
         return
 
     try:
-        body_file = os.path.join(basedir,
-                                 config.get("Job Email Body", "body"))
+        body_file = os.path.join(basedir, config.get("Job Email Body", "body"))
         with open(os.path.join(basedir, body_file)) as fp:
             body = fp.read()
     except KeyError:
@@ -162,13 +161,12 @@ def kill_job(job_id):
                     "the option 'body' and section 'Job Email Body'.)")
         return
     except IOError:
-        print_error("Couldn't read email body file: "
-                    "{}".format(body_file))
+        print_error("Couldn't read email body file: " "{}".format(body_file))
         return
 
     try:
         sig_file = os.path.join(basedir,
-                              config.get("Job Email Body", "signature"))
+                                config.get("Job Email Body", "signature"))
         with open(sig_file) as fp:
             signature = fp.read()
         body += "\n" + signature

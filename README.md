@@ -14,7 +14,7 @@ usage: catpig [-h] [-a] [-j] [-v] [-t] [-k] [-c] [PRINTER [PRINTER ...]]
 
 CAT Printer Information Generator. Get status of printers whose names match
 all the substrings provided (if any are), either from lists given in
-~/.catpig/*.printers or directly from cups.
+~/.catpig/*.printers or directly from cups; send test pages; manage jobs.
 
 positional arguments:
   PRINTER        substrings of printer names to look for

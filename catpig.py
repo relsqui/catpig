@@ -7,8 +7,27 @@ from string import maketrans
 from email.mime.text import MIMEText
 
 
-confirmations = ["y", "yes"]
-basedir = os.path.join(os.path.expanduser("~"), ".catpig/")
+# Command line options and help output.
+parser = argparse.ArgumentParser(description="""
+CAT Printer Information Generator. Get status of printers whose names match
+all the substrings provided (if any are), either from lists given in
+~/.catpig/*.printers or directly from cups; send test pages; manage jobs.
+""")
+parser.add_argument("printer", metavar="PRINTER", nargs="*",
+    help="substrings of printer names to look for")
+parser.add_argument("-a", "--alerts", action="store_true",
+    help="show printers which have alerts, and list them")
+parser.add_argument("-j", "--jobs", action="store_true",
+    help="show printers which have unfinished jobs, and list them")
+parser.add_argument("-v", "--verbose", action="store_true",
+    help="show detailed information for the selected printers")
+parser.add_argument("-t", "--test", action="store_true",
+    help="prompt to send a test to selected printers")
+parser.add_argument("-k", "--kill", action="store_true",
+    help="prompt to kill listed unfinished jobs; implies -j")
+parser.add_argument("-c", "--cups", action="store_true",
+    help="use printer list from cups instead of ~/.catpig/*.printers")
+args = parser.parse_args()
 
 
 def print_error(message):
@@ -204,27 +223,9 @@ def test_printer(printer_name):
         print_error("Aborted.")
 
 
-# Define command line options and help output.
-parser = argparse.ArgumentParser(description="""
-CAT Printer Information Generator. Get status of printers whose names match
-all the substrings provided (if any are), either from lists given in
-~/.catpig/*.printers or directly from cups.
-""")
-parser.add_argument("printer", metavar="PRINTER", nargs="*",
-    help="substrings of printer names to look for")
-parser.add_argument("-a", "--alerts", action="store_true",
-    help="show printers which have alerts, and list them")
-parser.add_argument("-j", "--jobs", action="store_true",
-    help="show printers which have unfinished jobs, and list them")
-parser.add_argument("-v", "--verbose", action="store_true",
-    help="show detailed information for the selected printers")
-parser.add_argument("-t", "--test", action="store_true",
-    help="prompt to send a test to selected printers")
-parser.add_argument("-k", "--kill", action="store_true",
-    help="prompt to kill listed unfinished jobs; implies -j")
-parser.add_argument("-c", "--cups", action="store_true",
-    help="use printer list from cups instead of ~/.catpig/*.printers")
-args = parser.parse_args()
+# Constants.
+confirmations = ["y", "yes"]
+basedir = os.path.join(os.path.expanduser("~"), ".catpig/")
 
 
 # Connect to cups and get job and printer information.

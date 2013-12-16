@@ -25,7 +25,7 @@ optional arguments:
   -j, --jobs     show printers which have unfinished jobs, and list them
   -v, --verbose  show detailed information for the selected printers
   -t, --test     prompt to send a test to selected printers
-  -k, --kill     prompt to kill listed unfinished jobs; implies -j
+  -k, --kill     prompt to kill any unfinished jobs which are listed
   -c, --cups     use printer list from cups instead of ~/.catpig/*.printers
 ```
 
@@ -63,6 +63,9 @@ So the front desk printer needs toner and paper, and the color printer in the co
 
 ```
 [jschmoe@it ~]$ catpig -k
+ ! frontdesk    Reception Counter
+   office1      Alice's Office
+   office2bw    Conference Room
 j! office2clr   Media Jam
    . 6803  important_report.pdf (alice)
 Cancel job #6803? y
@@ -74,13 +77,14 @@ Cancel job #6804? y
 Job removed.
 Send email? n
 Aborted.
+   office3      Bob's Office
 
 [jschmoe@it ~]$ catpig -aj
  ! frontdesk    Toner Empty, Media Low
  ! office2clr   Media Jam
 ```
 
-It's still jammed, but now there aren't jobs waiting to spew out as soon as you clear it.
+It's still jammed, but now there aren't jobs waiting to spew out as soon as you clear it. Note that `-k` alone will expand the list of jobs like `-j` does, but will not filter for only the printers that have them.
 
 ### Additional Examples ###
 Now you're out picking up toner for the front desk printer, but you've forgotten what the model is. Rather than calling the office and bugging someone to check, just ssh back to your workstation and use CATpig. You can pass a positional parameter to limit your view to the printers you're interested in ...

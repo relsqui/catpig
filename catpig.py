@@ -3,7 +3,6 @@
 import cups, argparse, tempfile, os, sys, smtplib, pwd, ConfigParser
 from glob import glob
 from urllib2 import urlopen
-from string import maketrans
 from email.mime.text import MIMEText
 
 
@@ -31,11 +30,12 @@ args = parser.parse_args()
 
 
 def print_error(message):
-    "Print message to stderr with a newline."
+    """Prints a message to stderr followed by a newline."""
     sys.stderr.write("{}\n".format(message))
 
+
 def pretty_string(message):
-    "Make printer status messages a little tidier-looking."
+    """Cleans up e.g. printer status messages for user-facing display."""
     message = str(message)
     try:
         most, last = message.rsplit("-", 1)
@@ -43,11 +43,11 @@ def pretty_string(message):
             message = most
     except ValueError:
         pass
-    return message.translate(maketrans("-", " ")).title()
+    return message.replace("-", " ").title()
 
 
 def print_job(job_id):
-    "Print information about a job."
+    """Prints the ID, filename, user, and status of a print job."""
     job_attrs = job_list[job_id]
     status = pretty_string(job_attrs["job-state-reasons"][4:])
     if "job-printer-state-message" in job_attrs:
@@ -60,14 +60,10 @@ def print_job(job_id):
         kill_job(job_id)
 
 
-def print_details(printer_name):
-    "Print detailed information about a printer's status, including jobs."
+def print_details(printer, jobs):
+    """Prints detailed information about a printer's location and status."""
+    printer_name = printer["printer-uri-supported"].rsplit("/", 1)[1]
     print "Printer Name:\t{}".format(printer_name)
-    try:
-        printer = all_printers[printer_name]
-    except KeyError:
-        print "Location:\tNOT FOUND\n"
-        return
     print "Location:\t{}".format(printer["printer-location"])
     print "Model:\t\t{}".format(printer["printer-make-and-model"])
 
@@ -79,28 +75,23 @@ def print_details(printer_name):
         for reason in printer["printer-state-reasons"]:
             print "\t\t{}".format(pretty_string(reason))
 
-    if jobs_by_printer[printer_name]:
+    if jobs:
         print "Jobs:\t\t",
-        print_job(jobs_by_printer[printer_name][0])
-        for job_id in jobs_by_printer[printer_name][1:]:
+        print_job(jobs[0])
+        for job_id in jobs[1:]:
             print "\t\t",
             print_job(job_id)
     print
 
 
-def print_summary(printer_name):
-    "Print a one-line summary of printer status."
-    try:
-        printer = all_printers[printer_name]
-    except KeyError:
-        print "XX {}\tNOT FOUND".format(printer_name)
-        return
-
+def print_summary(printer, jobs):
+    """Prints a one-line summary about a printer."""
+    printer_name = printer["printer-uri-supported"].rsplit("/", 1)[1]
     if printer["printer-state-reasons"][0] != "none":
         alert = "!"
     else:
         alert = " "
-    if len(jobs_by_printer[printer_name]):
+    if len(jobs):
         queue = "j"
     else:
         queue = " "
@@ -115,14 +106,15 @@ def print_summary(printer_name):
     print prefix, printer_name, "\t", info
 
     if args.jobs or args.kill:
-        for job_id in jobs_by_printer[printer_name]:
+        for job_id in jobs:
             print "   .",
             print_job(job_id)
 
 
 def kill_job(job_id):
+    """Kills a job, with confirmation; optionally, sends email to the user."""
     confirm = raw_input("Cancel job #{}? ".format(job_id))
-    if confirm not in confirmations:
+    if confirm not in CONFIRMATIONS:
         print_error("Aborted.")
         return
 
@@ -130,7 +122,7 @@ def kill_job(job_id):
     print_error("Job removed.")
 
     confirm = raw_input("Send email? ")
-    if confirm not in confirmations:
+    if confirm not in CONFIRMATIONS:
         print_error("Aborted.")
         return
 
@@ -143,7 +135,7 @@ def kill_job(job_id):
     }
 
     try:
-        config_file = os.path.join(basedir, "config")
+        config_file = os.path.join(BASEDIR, "config")
         with open(config_file) as fp:
             config = ConfigParser.ConfigParser()
             config.optionxform = str
@@ -153,8 +145,8 @@ def kill_job(job_id):
         return
 
     try:
-        body_file = os.path.join(basedir, config.get("Job Email Body", "body"))
-        with open(os.path.join(basedir, body_file)) as fp:
+        body_file = os.path.join(BASEDIR, config.get("Job Email Body", "body"))
+        with open(body_file) as fp:
             body = fp.read()
     except KeyError:
         print_error("No message body filename found. (It should be in "
@@ -165,7 +157,7 @@ def kill_job(job_id):
         return
 
     try:
-        sig_file = os.path.join(basedir,
+        sig_file = os.path.join(BASEDIR,
                                 config.get("Job Email Body", "signature"))
         with open(sig_file) as fp:
             signature = fp.read()
@@ -209,9 +201,9 @@ def kill_job(job_id):
 
 
 def test_printer(printer_name):
-    "Send a test page to the printer, after confirming."
+    """Sends a test page to the printer, with confirmation."""
     confirm = raw_input("Send test page to {}? ".format(printer_name))
-    if confirm in confirmations:
+    if confirm in CONFIRMATIONS:
         print_error("Fetching test page data ...")
         animal = urlopen("http://www.lorempixel.com/800/600/animals").read()
         with tempfile.NamedTemporaryFile() as fp:
@@ -223,82 +215,100 @@ def test_printer(printer_name):
         print_error("Aborted.")
 
 
-# Constants.
-confirmations = ["y", "yes"]
-basedir = os.path.join(os.path.expanduser("~"), ".catpig/")
+def main():
+    # Connect to cups and get job and printer information.
+    conn = cups.Connection()
+    all_printers = conn.getPrinters()
+    jobs = conn.getJobs()
 
-
-# Connect to cups and get job and printer information.
-conn = cups.Connection()
-all_printers = conn.getPrinters()
-jobs = conn.getJobs()
-
-if args.cups:
-    matched_printers = all_printers
-else:
-    # Open *.printers files and build printer name lists.
-    matched_printers = []
-    printer_lists = glob(os.path.join(basedir, "*.printers"))
-    if printer_lists:
-        for list_file in printer_lists:
-            with open(list_file) as fp:
-                matched_printers.extend([p.strip() for p in fp.readlines()])
-    else:
-        print_error("No printer list found, using list from cups.\n")
+    if args.cups:
         matched_printers = all_printers
-
-# Filter by printer name string arguments, if provided.
-if args.printer:
-    filtered = []
-    printer_patterns = map(lambda s: s.lower(), args.printer)
-    for m in matched_printers:
-        m = m.lower()
-        for p in printer_patterns:
-            if p not in m:
-                break
-        else:
-            filtered.append(m)
-    matched_printers = filtered
-    if not matched_printers:
-        quoted_patterns = ["'{}'".format(p) for p in args.printer]
-        pattern_string = " and ".join(quoted_patterns)
-        print_error("No printers found matching {}.".format(pattern_string))
-        if not args.cups and printer_lists:
-            print_error("Checked {}".format(", ".join(printer_lists)))
-
-# Initialize job lists.
-job_list = {}
-jobs_by_printer = {}
-for printer in all_printers:
-    jobs_by_printer[printer] = []
-
-# Get job information and sort it by printer.
-if jobs:
-    for job_id in jobs:
-        job = conn.getJobAttributes(job_id)
-        printer = job["printer-uri"].rsplit("/", 1)[1]
-        if printer not in matched_printers:
-            continue
-        job_list[job_id] = conn.getJobAttributes(job_id)
-        job_list[job_id]["printer"] = printer
-        jobs_by_printer[printer].append(job_id)
-
-# Filter for printers with alerts or jobs, if requested.
-if args.jobs or args.alerts:
-    filtered = []
-    for p in matched_printers:
-        if args.jobs and p in jobs_by_printer and jobs_by_printer[p]:
-            filtered.append(p)
-        elif (args.alerts and p in all_printers
-              and all_printers[p]["printer-state-reasons"][0] != "none"):
-            filtered.append(p)
-    matched_printers = filtered
-
-# Display requested information for matching printers.
-for printer_name in matched_printers:
-    if args.verbose:
-        print_details(printer_name)
     else:
-        print_summary(printer_name)
-    if args.test:
-        test_printer(printer_name)
+        # Open *.printers files and build printer name lists.
+        matched_printers = []
+        printer_lists = glob(os.path.join(BASEDIR, "*.printers"))
+        if printer_lists:
+            for list_file in printer_lists:
+                with open(list_file) as fp:
+                    matched_printers.extend([p.strip() for p in fp.readlines()])
+        else:
+            print_error("No printer list found, using list from cups.\n")
+            matched_printers = all_printers
+
+    # Filter by printer name string arguments, if provided.
+    if args.printer:
+        filtered = []
+        printer_patterns = map(lambda s: s.lower(), args.printer)
+        for m in matched_printers:
+            m = m.lower()
+            for p in printer_patterns:
+                if p not in m:
+                    break
+            else:
+                filtered.append(m)
+        matched_printers = filtered
+        if not matched_printers:
+            quoted_patterns = ["'{}'".format(p) for p in args.printer]
+            pattern_string = " and ".join(quoted_patterns)
+            print_error("No printers found matching {}.".format(pattern_string))
+            if not args.cups and printer_lists:
+                print_error("Checked {}".format(", ".join(printer_lists)))
+
+    # Initialize job lists.
+    job_list = {}
+    jobs_by_printer = {}
+    for printer in all_printers:
+        jobs_by_printer[printer] = []
+
+    # Get job information and sort it by printer.
+    if jobs:
+        for job_id in jobs:
+            job = conn.getJobAttributes(job_id)
+            printer = job["printer-uri"].rsplit("/", 1)[1]
+            if printer not in matched_printers:
+                continue
+            job_list[job_id] = conn.getJobAttributes(job_id)
+            job_list[job_id]["printer"] = printer
+            jobs_by_printer[printer].append(job_id)
+
+    # Filter for printers with alerts or jobs, if requested.
+    if args.jobs or args.alerts:
+        filtered = []
+        for p in matched_printers:
+            if args.jobs and p in jobs_by_printer and jobs_by_printer[p]:
+                filtered.append(p)
+            elif (args.alerts and p in all_printers
+                  and all_printers[p]["printer-state-reasons"][0] != "none"):
+                filtered.append(p)
+        matched_printers = filtered
+
+    # Display requested information for matching printers.
+    for printer_name in matched_printers:
+        printer_exists = True
+        try:
+            printer = all_printers[printer_name]
+        except KeyError:
+            printer_exists = False
+
+        if args.verbose:
+            if printer_exists:
+                print_details(printer, jobs_by_printer[printer_name])
+            else:
+                print "Printer Name:\t{}".format(printer_name)
+                print "Location:\tNOT FOUND\n"
+                return
+        else:
+            if printer_exists:
+                print_summary(printer, jobs_by_printer[printer_name])
+            else:
+                print "XX {}\tNOT FOUND".format(printer_name)
+                return
+        if args.test:
+            test_printer(printer_name)
+
+
+CONFIRMATIONS = ["y", "yes"]
+BASEDIR = os.path.join(os.path.expanduser("~"), ".catpig/")
+
+if __name__ == "__main__":
+    main()

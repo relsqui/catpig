@@ -46,18 +46,18 @@ def pretty_string(message):
     return message.replace("-", " ").title()
 
 
-def print_job(conn, job_id):
+def print_job(conn, job):
     """Prints the ID, filename, user, and status of a print job."""
-    job_attrs = job_list[job_id]
-    status = pretty_string(job_attrs["job-state-reasons"][4:])
-    if "job-printer-state-message" in job_attrs:
-        message = job_attrs["job-printer-state-message"]
+    status = pretty_string(job["job-state-reasons"][4:])
+    if "job-printer-state-message" in job:
+        message = job["job-printer-state-message"]
         status = " -- {} ({})".format(status, message)
-    user = job_attrs["job-originating-user-name"]
-    name = job_attrs["job-name"]
-    print "{}  {} ({}){}".format(str(job_id), name, user, status)
+    user = job["job-originating-user-name"]
+    name = job["job-name"]
+    job_id = job["job-id"]
+    print "{}  {} ({}){}".format(job_id, name, user, status)
     if args.kill:
-        kill_job(conn, job_id)
+        kill_job(conn, job)
 
 
 def print_details(printer, jobs):
@@ -78,13 +78,13 @@ def print_details(printer, jobs):
     if jobs:
         print "Jobs:\t\t",
         print_job(conn, jobs[0])
-        for job_id in jobs[1:]:
+        for job in jobs[1:]:
             print "\t\t",
-            print_job(conn, job_id)
+            print_job(conn, job)
     print
 
 
-def print_summary(printer, jobs):
+def print_summary(conn, printer, jobs):
     """Prints a one-line summary about a printer."""
     printer_name = printer["printer-uri-supported"].rsplit("/", 1)[1]
     if printer["printer-state-reasons"][0] != "none":
@@ -106,27 +106,33 @@ def print_summary(printer, jobs):
     print prefix, printer_name, "\t", info
 
     if args.jobs or args.kill:
-        for job_id in jobs:
+        for job in jobs:
             print "   .",
-            print_job(conn, job_id)
+            print_job(conn, job)
 
 
-def kill_job(conn, job_id):
+def kill_job(conn, job):
     """Kills a job, with confirmation; optionally, sends email to the user."""
-    confirm = raw_input("Cancel job #{}? ".format(job_id))
+    job_id = job["job-id"]
+    printer_name = job["job-printer-uri"].rsplit("/", 1)[1]
+
+    confirm = raw_input("Cancel job #{} on {}? ".format(job_id, printer_name))
     if confirm not in CONFIRMATIONS:
         print_error("Aborted.")
         return
 
-    conn.cancelJob(job_id)
-    print_error("Job removed.")
+    try:
+        conn.cancelJob(job_id)
+        print_error("Job removed.")
+    except cups.IPPError as (status, description):
+        print "Unable to remove job (\"{}\").".format(pretty_string(description))
+        return
 
     confirm = raw_input("Send email? ")
     if confirm not in CONFIRMATIONS:
         print_error("Aborted.")
         return
 
-    job = job_list[job_id]
     email_vars = {
         "user": job["job-originating-user-name"],
         "me": pwd.getpwuid(os.getuid()).pw_name,
@@ -269,7 +275,7 @@ def main():
                 continue
             job_list[job_id] = conn.getJobAttributes(job_id)
             job_list[job_id]["printer"] = printer
-            jobs_by_printer[printer].append(job_id)
+            jobs_by_printer[printer].append(job)
 
     # Filter for printers with alerts or jobs, if requested.
     if args.jobs or args.alerts:
@@ -299,7 +305,7 @@ def main():
                 return
         else:
             if printer_exists:
-                print_summary(printer, jobs_by_printer[printer_name])
+                print_summary(conn, printer, jobs_by_printer[printer_name])
             else:
                 print "XX {}\tNOT FOUND".format(printer_name)
                 return

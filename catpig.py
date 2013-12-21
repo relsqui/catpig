@@ -46,7 +46,7 @@ def pretty_string(message):
     return message.replace("-", " ").title()
 
 
-def print_job(job_id):
+def print_job(conn, job_id):
     """Prints the ID, filename, user, and status of a print job."""
     job_attrs = job_list[job_id]
     status = pretty_string(job_attrs["job-state-reasons"][4:])
@@ -57,7 +57,7 @@ def print_job(job_id):
     name = job_attrs["job-name"]
     print "{}  {} ({}){}".format(str(job_id), name, user, status)
     if args.kill:
-        kill_job(job_id)
+        kill_job(conn, job_id)
 
 
 def print_details(printer, jobs):
@@ -77,10 +77,10 @@ def print_details(printer, jobs):
 
     if jobs:
         print "Jobs:\t\t",
-        print_job(jobs[0])
+        print_job(conn, jobs[0])
         for job_id in jobs[1:]:
             print "\t\t",
-            print_job(job_id)
+            print_job(conn, job_id)
     print
 
 
@@ -108,10 +108,10 @@ def print_summary(printer, jobs):
     if args.jobs or args.kill:
         for job_id in jobs:
             print "   .",
-            print_job(job_id)
+            print_job(conn, job_id)
 
 
-def kill_job(job_id):
+def kill_job(conn, job_id):
     """Kills a job, with confirmation; optionally, sends email to the user."""
     confirm = raw_input("Cancel job #{}? ".format(job_id))
     if confirm not in CONFIRMATIONS:
@@ -200,7 +200,7 @@ def kill_job(job_id):
     print_error("Sent.")
 
 
-def test_printer(printer_name):
+def test_printer(conn, printer_name):
     """Sends a test page to the printer, with confirmation."""
     confirm = raw_input("Send test page to {}? ".format(printer_name))
     if confirm in CONFIRMATIONS:
@@ -304,7 +304,7 @@ def main():
                 print "XX {}\tNOT FOUND".format(printer_name)
                 return
         if args.test:
-            test_printer(printer_name)
+            test_printer(conn, printer_name)
 
 
 CONFIRMATIONS = ["y", "yes"]

@@ -215,8 +215,11 @@ def test_printer(conn, printer_name):
         with tempfile.NamedTemporaryFile() as fp:
             fp.write(animal)
             print_error("Fetched. Printing ...")
-            conn.printFile(printer_name, fp.name, "CATPIG Test", {})
-        print_error("Done.")
+            try:
+                conn.printFile(printer_name, fp.name, "CATPIG Test", {})
+                print_error("Done.")
+            except cups.IPPError as (status, description):
+                print "Test failed to print (\"{}\").".format(pretty_string(description))
     else:
         print_error("Aborted.")
 

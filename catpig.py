@@ -60,7 +60,7 @@ def print_job(conn, job):
         kill_job(conn, job)
 
 
-def print_details(printer, jobs):
+def print_details(conn, printer, jobs):
     """Prints detailed information about a printer's location and status."""
     printer_name = printer["printer-uri-supported"].rsplit("/", 1)[1]
     print "Printer Name:\t{}".format(printer_name)
@@ -298,7 +298,7 @@ def main():
 
         if args.verbose:
             if printer_exists:
-                print_details(printer, jobs_by_printer[printer_name])
+                print_details(conn, printer, jobs_by_printer[printer_name])
             else:
                 print "Printer Name:\t{}".format(printer_name)
                 print "Location:\tNOT FOUND\n"
